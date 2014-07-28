@@ -23,18 +23,18 @@ var ASCIIGame = {
 					if (new Date() - game.lastFrame > 50/*ms*/) {
 						game.lastFrame = new Date();
 
-						if (tools.keysDown[65] && game.player.x > 0) { // A (go left)
+						if (tools.keysDown[65]) { // A (go left)
 							if (data.get(game.player.x - 1, game.player.y).id === 'empty') {
 								data.move(game.player.x, game.player.y, --game.player.x, game.player.y);
 							}
 						}
-						if (tools.keysDown[68] && game.player.x < game.w - 1) { // D (go right)
+						if (tools.keysDown[68]) { // D (go right)
 							if (data.get(game.player.x + 1, game.player.y).id === 'empty') {
 								data.move(game.player.x, game.player.y, ++game.player.x, game.player.y);
 							}
 						}
 						if (tools.keysDown[87]) { // W (jump)
-							if ((game.player.y === game.h - 1) || (data.get(game.player.x, game.player.y + 1).id !== 'empty')) {
+							if (data.get(game.player.x, game.player.y + 1).id !== 'empty') {
 								console.log(game.player.y);
 								game.player.jumpIndex = 0;
 							}
@@ -89,6 +89,9 @@ var ASCIIGame = {
 					return o;
 				},
 				get: function(x, y) {
+					if (x < 0 || y < 0 || x >= game.data[0].length || y >= game.data.length) {
+						return {id: 'outofbounds'};
+					}
 					return game.data[y][x];
 				},
 				set: function(x, y, val) {
