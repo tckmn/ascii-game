@@ -13,7 +13,7 @@ var ASCIIGame = {
 				// DOM
 				el: el, elData: [], info: null,
 				// internals
-				data: [], dynamicData: [],
+				data: [], eventData: {frame: []},
 				w: options.w || options.width || 80,
 				h: options.h || options.height || 24,
 				player: {jumpDeltas: [2, 2, 2, 1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0], jumpIndex: -1},
@@ -52,10 +52,10 @@ var ASCIIGame = {
 							}
 						}
 
-						// handle dynamic tiles
-						for (var i = 0; i < game.dynamicData.length; ++i) {
-							var c = tools.unpack(game.dynamicData[i]), x = c[0], y = c[1];
-							data.get(x, y).eachFrame(data.get(x, y), x, y);
+						// handle "each frame" events
+						for (var i = 0; i < game.eventData.frame.length; ++i) {
+							var c = tools.unpack(game.eventData.frame[i]), x = c[0], y = c[1];
+							data.get(x, y).events.frame(data.get(x, y), x, y);
 						}
 
 						data.render();
@@ -80,6 +80,10 @@ var ASCIIGame = {
 				},
 				unpack: function(n) {
 					return [(n >> 16) & 0xFFFF, n & 0xFFFF];
+				},
+				// helper constants
+				direction: {
+					RIGHT: 1, LEFT: -1, UP: 2, DOWN: -2
 				}
 			// data is a helper object to manipulate game.data and game.elData
 			}, data = {
@@ -89,15 +93,23 @@ var ASCIIGame = {
 						empty: {color: '#000', chr: '.'},
 						player: {color: '#00F', chr: '@'},
 						block: {color: '#F00', chr: '#'},
-						goomba: {color: '#B73', chr: 'O', dynamic: true, eachFrame: function(self, x, y) {
-							if (++self.counter !== 3) return;
-							self.counter = 0;
-							if (data.get(x - 1, y).id === 'empty') {
-								data.move(x, y, x - 1, y);
+						goomba: {color: '#B73', chr: 'O', events: {
+							frame: function(self, x, y) {
+								if (++self.counter !== 4) return;
+								self.counter = 0;
+								if (data.get(x - 1, y).id === 'empty') {
+									data.move(x, y, x - 1, y);
+								}
+							},
+							collision: function(self, x, y, other, direction) {
+								if (direction == tools.direction.UP) {
+									data.set(x, y, data.tile('empty'));
+								}
 							}
 						}, counter: 0}
 					})[type] || {};
 					o.id = type;
+					if (!o.events) o.events = {};
 					return o;
 				},
 				get: function(x, y) {
@@ -107,8 +119,14 @@ var ASCIIGame = {
 					return game.data[y][x];
 				},
 				set: function(x, y, val) {
-					if (game.data[y][x].dynamic) game.dynamicData.splice(game.dynamicData.indexOf(tools.pack(x, y)));
-					if (val.dynamic) game.dynamicData.push(tools.pack(x, y));
+					for (evtType in game.eventData) {
+						if (game.data[y][x].events[evtType]) {
+							game.eventData[evtType].splice(game.eventData[evtType].indexOf(tools.pack(x, y)));
+						}
+						if (val.events[evtType]) {
+							game.eventData[evtType].push(tools.pack(x, y));
+						}
+					}
 					game.data[y][x] = val;
 					data.modified.push(tools.pack(x, y));
 				},
@@ -116,6 +134,21 @@ var ASCIIGame = {
 					var old = data.get(x1, y1);
 					data.set(x1, y1, data.tile('empty'));
 					data.set(x2, y2, old);
+				},
+				moveWithCollision: function(x1, y1, x2, y2) {
+					var d1 = data.get(x1, y1), d2 = data.get(x2, y2);
+					if (d2.id === 'empty') {
+						data.move(x1, y1, x2, y2);
+					} else {
+						// this line of code is terrifying
+						var dir = x1 < x2 ? tools.direction.RIGHT : (x1 > x2 ? tools.direction.LEFT : (y1 < y2 ? tools.direction.DOWN : tools.direction.UP));
+						if (d1.events.collision) {
+							d1.events.collision(d1, x1, y1, d2, dir);
+						}
+						if (d2.events.collision) {
+							d2.events.collision(d2, x2, y2, d1, -dir);
+						}
+					}
 				},
 				// render and modified exist so that the whole DOM doesn't have to be updated each frame
 				render: function() {
