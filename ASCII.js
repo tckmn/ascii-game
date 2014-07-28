@@ -13,7 +13,7 @@
  */
 
 /* BUGS list
- * You can "step over" 1-tile high objects, which means you can squoosh goombas by walking towards them
+ * When you walk off an edge, you float for a bit before you fall
  */
 
 /* List of events
@@ -88,9 +88,9 @@ var ASCIIGame = {
 								d.physics.positionY = d.y;
 							}
 						}
-						// this is *really* hacky
+						// this is really hacky
 						if (d.physics.gravity && data.get(d.x, d.y + 1) !== 'empty') {
-							data.moveWithCollision(d.x, d.y, d.x, d.y + 1); // force of gravity when standing on the ground
+							data.collide(d, data.get(d.x, d.y + 1)); // force of gravity when standing on the ground
 						}
 
 						data.render();
@@ -206,6 +206,19 @@ var ASCIIGame = {
 					data.set(x1, y1, data.tile('empty'));
 					data.set(x2, y2, old);
 				},
+				collide: function(d1, d2) {
+					var dx = d2.x - d1.x, dy = d2.y - d1.y,
+						dir = Math.abs(dy) >= Math.abs(dx) ?
+						(dy > 0 ? tools.direction.DOWN : tools.direction.UP) :
+						(dx > 0 ? tools.direction.RIGHT : tools.direction.LEFT);
+
+					if (d1.events.collision) {
+						d1.events.collision(d1, d2, dir);
+					}
+					if (d2.events.collision) {
+						d2.events.collision(d2, d1, -dir);
+					}
+				},
 				// uses tools#line to stop on collision
 				moveWithCollision: function(x1, y1, x2, y2) {
 					var line = tools.line(x1, y1, x2, y2);
@@ -221,19 +234,7 @@ var ASCIIGame = {
 						if (d2.id === 'empty') {
 							data.move(x1, y1, x2, y2);
 						} else {
-							// collision
-							var dx = x2 - x1, dy = y2 - y1,
-								dir = Math.abs(dy) >= Math.abs(dx) ?
-								(dy > 0 ? tools.direction.DOWN : tools.direction.UP) :
-								(dx > 0 ? tools.direction.RIGHT : tools.direction.LEFT);
-
-							if (d1.events.collision) {
-								d1.events.collision(d1, d2, dir);
-							}
-							if (d2.events.collision) {
-								d2.events.collision(d2, d1, -dir);
-							}
-
+							data.collide(d1, d2);
 							return true; // collided
 						}
 					}
