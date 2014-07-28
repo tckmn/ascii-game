@@ -27,13 +27,16 @@ var ASCIIGame = {
 								data.move(game.player.x)(game.player.y)(++game.player.x)(game.player.y);
 							}
 						}
-						if (tools.keysDown[87] && game.player.jumpIndex == -1) { // W (jump)
-							game.player.jumpIndex = 0;
+						if (tools.keysDown[87]) { // W (jump)
+							if ((game.player.y == game.h - 1) || (data.get(game.player.x)(game.player.y + 1).id != 'empty')) {
+								console.log(game.player.y);
+								game.player.jumpIndex = 0;
+							}
 						}
 						if (game.player.jumpIndex != -1) { // jumping
-							dy = -game.player.jumpDeltas[game.player.jumpIndex++];
-							if (data.get(game.player.x)(game.player.y + dy).id == 'empty') {
-								data.move(game.player.x)(game.player.y)(game.player.x)(game.player.y += dy);
+							dy = game.player.jumpDeltas[game.player.jumpIndex++];
+							if (data.get(game.player.x)(game.player.y - dy).id == 'empty') {
+								data.move(game.player.x)(game.player.y)(game.player.x)(game.player.y -= dy);
 							}
 							if (game.player.jumpIndex >= game.player.jumpDeltas.length) game.player.jumpIndex = -1;
 						}
