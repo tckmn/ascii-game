@@ -55,7 +55,7 @@ var ASCIIGame = {
 						// handle "each frame" events
 						for (var i = 0; i < game.eventData.frame.length; ++i) {
 							var c = tools.unpack(game.eventData.frame[i]), x = c[0], y = c[1];
-							data.get(x, y).events.frame(data.get(x, y), x, y);
+							data.get(x, y).events.frame(data.get(x, y));
 						}
 
 						data.render();
@@ -94,16 +94,16 @@ var ASCIIGame = {
 						player: {color: '#00F', chr: '@'},
 						block: {color: '#F00', chr: '#'},
 						goomba: {color: '#B73', chr: 'O', events: {
-							frame: function(self, x, y) {
+							frame: function(self) {
 								if (++self.counter !== 4) return;
 								self.counter = 0;
-								if (data.get(x - 1, y).id === 'empty') {
-									data.move(x, y, x - 1, y);
+								if (data.get(self.x - 1, self.y).id === 'empty') {
+									data.move(self.x, self.y, self.x - 1, self.y);
 								}
 							},
-							collision: function(self, x, y, other, direction) {
+							collision: function(self, other, direction) {
 								if (direction == tools.direction.UP) {
-									data.set(x, y, data.tile('empty'));
+									data.set(self.x, self.y, data.tile('empty'));
 								}
 							}
 						}, counter: 0}
@@ -119,6 +119,8 @@ var ASCIIGame = {
 					return game.data[y][x];
 				},
 				set: function(x, y, val) {
+					val.x = x;
+					val.y = y;
 					for (evtType in game.eventData) {
 						if (game.data[y][x].events[evtType]) {
 							game.eventData[evtType].splice(game.eventData[evtType].indexOf(tools.pack(x, y)));
@@ -143,10 +145,10 @@ var ASCIIGame = {
 						// this line of code is terrifying
 						var dir = x1 < x2 ? tools.direction.RIGHT : (x1 > x2 ? tools.direction.LEFT : (y1 < y2 ? tools.direction.DOWN : tools.direction.UP));
 						if (d1.events.collision) {
-							d1.events.collision(d1, x1, y1, d2, dir);
+							d1.events.collision(d1, d2, dir);
 						}
 						if (d2.events.collision) {
-							d2.events.collision(d2, x2, y2, d1, -dir);
+							d2.events.collision(d2, d1, -dir);
 						}
 					}
 				},
