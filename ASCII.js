@@ -10,10 +10,10 @@ var ASCIIGame = {
 
 		// game is the object that stores all the game-related information (data, internal metadata, player, etc.)
 		var game = {
-				el: el,
-				data: [],
-				elData: [],
-				info: null,
+				// DOM
+				el: el, elData: [], info: null,
+				// internals
+				data: [], dynamicData: [],
 				w: options.w || options.width || 80,
 				h: options.h || options.height || 24,
 				player: {jumpDeltas: [2, 2, 2, 1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0], jumpIndex: -1},
@@ -66,7 +66,15 @@ var ASCIIGame = {
 					function(f){window.msRequestAnimationFrame(f);} ||
 					function(f){window.oRequestAnimationFrame(f);} ||
 					function(f){setTimeout(f, 5);},
-				keysDown: {}
+				keysDown: {},
+				// for packing X/Y coords into a single number
+				// for both values, 0 <= v < pow(2, 16)
+				pack: function(a, b) {
+					return (a << 16) | b;
+				},
+				unpack: function(n) {
+					return [(n >> 16) & 0xFFFF, n & 0xFFFF];
+				}
 			// data is a helper object to manipulate game.data and game.elData
 			}, data = {
 				// types of squares / tiles
@@ -74,7 +82,8 @@ var ASCIIGame = {
 					var o = ({
 						empty: {color: '#000', chr: '.'},
 						player: {color: '#00F', chr: '@'},
-						block: {color: '#F00', chr: '#'}
+						block: {color: '#F00', chr: '#'},
+						goomba: {color: '#B73', chr: 'O', dynamic: true}
 					})[type] || {};
 					o.id = type;
 					return o;
@@ -83,8 +92,10 @@ var ASCIIGame = {
 					return game.data[y][x];
 				},
 				set: function(x, y, val) {
+					if (game.data[y][x].dynamic) game.dynamicData.splice(game.dynamicData.indexOf(tools.pack(x, y)));
+					if (val.dynamic) game.dynamicData.push(tools.pack(x, y));
 					game.data[y][x] = val;
-					data.modified.push({x: x, y: y});
+					data.modified.push(tools.pack(x, y));
 				},
 				move: function(x1, y1, x2, y2) {
 					var old = data.get(x1, y1);
@@ -94,9 +105,9 @@ var ASCIIGame = {
 				// render and modified exist so that the whole DOM doesn't have to be updated each frame
 				render: function() {
 					for (var i = 0; i < data.modified.length; ++i) {
-						var c = data.modified[i];
-						game.elData[c.y][c.x].style.color = game.data[c.y][c.x].color;
-						game.elData[c.y][c.x].firstChild.nodeValue = game.data[c.y][c.x].chr;
+						var c = tools.unpack(data.modified[i]), x = c[0], y = c[1];
+						game.elData[y][x].style.color = game.data[y][x].color;
+						game.elData[y][x].firstChild.nodeValue = game.data[y][x].chr;
 					}
 					data.modified = [];
 				},
@@ -145,6 +156,13 @@ var ASCIIGame = {
 				// a random wall (for testing)
 				var wx = Math.random() * game.w | 0;
 				for (var i = 1; i < 6; ++i) data.set(wx, game.h - i, data.tile('block'));
+
+				// a random goomba (also for testing)
+				var gx = Math.random() * game.w | 0;
+				if (wx == gx) gx += (gx > game.w/2 ? 1 : -1);
+				data.set(gx, game.h - 1, data.tile('goomba'));
+
+				console.log(game.dynamicData);
 
 				// start playing!
 				data.render();
