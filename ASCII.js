@@ -23,6 +23,7 @@ var ASCIIGame = {
 					if (new Date() - game.lastFrame > 50/*ms*/) {
 						game.lastFrame = new Date();
 
+						// handle player input
 						if (tools.keysDown[65]) { // A (go left)
 							if (data.get(game.player.x - 1, game.player.y).id === 'empty') {
 								data.move(game.player.x, game.player.y, --game.player.x, game.player.y);
@@ -35,7 +36,6 @@ var ASCIIGame = {
 						}
 						if (tools.keysDown[87]) { // W (jump)
 							if (data.get(game.player.x, game.player.y + 1).id !== 'empty') {
-								console.log(game.player.y);
 								game.player.jumpIndex = 0;
 							}
 						}
@@ -50,6 +50,12 @@ var ASCIIGame = {
 							if (data.get(game.player.x, game.player.y + 1).id === 'empty') {
 								data.move(game.player.x, game.player.y, game.player.x, ++game.player.y);
 							}
+						}
+
+						// handle dynamic tiles
+						for (var i = 0; i < game.dynamicData.length; ++i) {
+							var c = tools.unpack(game.dynamicData[i]), x = c[0], y = c[1];
+							data.get(x, y).eachFrame(x, y);
 						}
 
 						data.render();
@@ -83,7 +89,11 @@ var ASCIIGame = {
 						empty: {color: '#000', chr: '.'},
 						player: {color: '#00F', chr: '@'},
 						block: {color: '#F00', chr: '#'},
-						goomba: {color: '#B73', chr: 'O', dynamic: true}
+						goomba: {color: '#B73', chr: 'O', dynamic: true, eachFrame: function(x, y) {
+							if (data.get(x - 1, y).id == 'empty') {
+								data.move(x, y, x - 1, y);
+							}
+						}}
 					})[type] || {};
 					o.id = type;
 					return o;
@@ -164,8 +174,6 @@ var ASCIIGame = {
 				var gx = Math.random() * game.w | 0;
 				if (wx === gx) gx += (gx > game.w/2 ? 1 : -1);
 				data.set(gx, game.h - 1, data.tile('goomba'));
-
-				console.log(game.dynamicData);
 
 				// start playing!
 				data.render();
