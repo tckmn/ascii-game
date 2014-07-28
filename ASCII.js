@@ -33,9 +33,13 @@ var ASCIIGame = {
 				el: el, elData: [], info: null,
 				// internals
 				data: [], eventData: {frame: []}, physicsData: [],
+				el: el,
+				data: [],
+				elData: [],
 				w: options.w || options.width || 80,
 				h: options.h || options.height || 24,
 				player: null,
+				playerName: document.getElementById('nameDisp').innerText.replace('Enter your name and press Enter: ', ''),
 				lastFrame: 0,
 				mainLoop: function() {
 					// stuff that happens every frame
@@ -245,6 +249,10 @@ var ASCIIGame = {
 		// this is the only object from init that will be exposed to outsiders
 		var asciiGame = {
 			play: function() {
+				
+				// remove nameDisp
+				document.body.removeChild(document.getElementById('nameDisp'));
+                  
 				// clear loading message, etc.
 				while (game.el.firstChild) game.el.removeChild(game.el.firstChild);
 
@@ -304,6 +312,34 @@ var ASCIIGame = {
 };
 
 window.onload = function() {
-	var asciiGame = ASCIIGame.init(document.getElementById('ascii'));
-	asciiGame.play();
+	// remove content in pre tag with loading text
+	var loadingPre = document.getElementById('ascii');
+	loadingPre.removeChild(loadingPre.firstChild);
+	
+	// create span that user types their name on
+	var node = document.createElement('span');
+	node.setAttribute('id', 'nameDisp');
+	document.body.appendChild(node);
+	node.appendChild(document.createTextNode('Enter your name and press Enter: '));
+	
+	// add event that lets user type their name on nameDisp
+	window.addEventListener('keypress', nameHandler, false);
 };
+
+function nameHandler(e) {
+	// check which key was pressed
+	switch(e.keyCode)
+	{
+		case 13:
+			var asciiGame = ASCIIGame.init(document.getElementById('ascii'));
+			asciiGame.play();
+			
+			window.removeEventListener('keypress', nameHandler, false);
+			break;
+			
+		default:
+			// where characters in user's name gets appended to span
+			var node = document.getElementById('nameDisp');
+			node.appendChild(document.createTextNode(String.fromCharCode(e.keyCode)));
+	}
+}
