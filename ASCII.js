@@ -1,3 +1,9 @@
+/**
+ * Code for ascii-game
+ * @author KeyboardFire
+ * @license MIT
+ */
+
 var ASCIIGame = {
 	init: function(el, options) {
 		if (!options) options = {};
