@@ -7,34 +7,40 @@ var ASCIIGame = {
 				el: el,
 				data: [],
 				elData: [],
+				info: null,
 				w: options.w || options.width || 80,
 				h: options.h || options.height || 24,
-				player: {jumpDeltas: [2, 2, 1, 2, 1, 1, 2, 1, 1, 0, 1, 1, 0, 1, 0, 0], jumpIndex: -1},
+				player: {jumpDeltas: [2, 2, 2, 1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0], jumpIndex: -1},
 				lastFrame: 0,
 				mainLoop: function() {
 					// stuff that happens every frame
 					if (new Date() - game.lastFrame > 50/*ms*/) {
 						game.lastFrame = new Date();
 
-						oldPlayerX = game.player.x, oldPlayerY = game.player.y;
-						if (tools.keysDown[65]) { // A (go left)
-							--game.player.x;
+						if (tools.keysDown[65] && game.player.x > 0) { // A (go left)
+							if (data.get(game.player.x - 1)(game.player.y).id == 'empty') {
+								data.move(game.player.x)(game.player.y)(--game.player.x)(game.player.y);
+							}
 						}
-						if (tools.keysDown[68]) { // D (go right)
-							++game.player.x;
+						if (tools.keysDown[68] && game.player.x < game.w - 1) { // D (go right)
+							if (data.get(game.player.x + 1)(game.player.y).id == 'empty') {
+								data.move(game.player.x)(game.player.y)(++game.player.x)(game.player.y);
+							}
 						}
 						if (tools.keysDown[87] && game.player.jumpIndex == -1) { // W (jump)
 							game.player.jumpIndex = 0;
 						}
 						if (game.player.jumpIndex != -1) { // jumping
-							game.player.y -= game.player.jumpDeltas[game.player.jumpIndex++];
+							dy = -game.player.jumpDeltas[game.player.jumpIndex++];
+							if (data.get(game.player.x)(game.player.y + dy).id == 'empty') {
+								data.move(game.player.x)(game.player.y)(game.player.x)(game.player.y += dy);
+							}
 							if (game.player.jumpIndex >= game.player.jumpDeltas.length) game.player.jumpIndex = -1;
 						}
-						if (game.player.y != game.h - 1) { // gravity
-							++game.player.y;
-						}
-						if ((oldPlayerX != game.player.x) || (oldPlayerY != game.player.y)) {
-							data.move(oldPlayerX)(oldPlayerY)(game.player.x)(game.player.y);
+						if (game.player.y < game.h - 1) { // gravity
+							if (data.get(game.player.x)(game.player.y + 1).id == 'empty') {
+								data.move(game.player.x)(game.player.y)(game.player.x)(++game.player.y);
+							}
 						}
 
 						data.render();
@@ -54,10 +60,11 @@ var ASCIIGame = {
 				keysDown: {}
 			// data is a helper object to manipulate game.data and game.elData
 			}, data = {
-				// special squares
+				// squares / tiles
 				s: {
-					EMPTY: {color: '#000', chr: '.'},
-					PLAYER: {color: '#00F', chr: '@'}
+					EMPTY: {color: '#000', chr: '.', id: 'empty'},
+					PLAYER: {color: '#00F', chr: '@', id: 'player'},
+					BLOCK: {color: '#F00', chr: '#', id: 'block'}
 				},
 				get: function(x) {
 					return function(y) {
@@ -119,6 +126,12 @@ var ASCIIGame = {
 					game.el.appendChild(document.createTextNode('\n'));
 				}
 
+				// set up info display
+				game.info = document.createElement('div');
+				game.info.appendChild(document.createTextNode('info goes here'));
+				game.el.appendChild(document.createTextNode('\n'));
+				game.el.appendChild(game.info);
+
 				// set up event listeners
 				window.onkeydown = function(e) { console.log(e.which, e.keyCode); tools.keysDown[e.which || e.keyCode] = true; };
 				window.onkeyup = function(e) { tools.keysDown[e.which || e.keyCode] = false; };
@@ -128,7 +141,12 @@ var ASCIIGame = {
 				game.player.y = game.h - 1;
 				data.set(game.player.x)(game.player.y)(data.s.PLAYER);
 
+				// a random wall (for testing)
+				var wx = Math.random() * game.w | 0;
+				for (var i = 1; i < 6; ++i) data.set(wx)(game.h - i)(data.s.BLOCK);
+
 				// start playing!
+				data.render();
 				game.mainLoop();
 			}
 		};
