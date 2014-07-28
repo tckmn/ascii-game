@@ -7,6 +7,9 @@
 /* TODO list
  * eliminate physics magic numbers (constants instead)
  * add delta times instead of fixed FPS
+ * abstract into multiple files
+ * scrolling!
+ * a menu (low priority)
  */
 
 /* List of events
@@ -48,6 +51,7 @@ var ASCIIGame = {
 							game.player.physics.velocityX = Math.min(game.player.physics.velocityX + 0.5, 1);
 						}
 						if (tools.keysDown[87]) { // W (jump)
+                            // can't jump in midair
 							if (data.get(game.player.x, game.player.y + 1).id !== 'empty') {
 								game.player.physics.velocityY = -1;
 							}
@@ -68,6 +72,8 @@ var ASCIIGame = {
 								if (data.get(x, y + 1).id === 'empty') d.physics.velocityY += d.physics.gravity;
 								else d.physics.velocityY = Math.min(d.physics.velocityY, 0);
 							}
+
+                            // update "real" coords if changed
 							var newX = Math.round(d.physics.positionX), newY = Math.round(d.physics.positionY);
 							if (x !== newX || y !== newY) {
 								if (data.moveWithCollision(x, y, newX, newY)) {
@@ -82,7 +88,7 @@ var ASCIIGame = {
 
 					tools.reqAnimFrame(game.mainLoop);
 				}
-			// tools stores all the stuff not directly related to the game (DOM tools, I/O, shims, etc.)
+			// tools stores all the stuff not directly related to the game (DOM tools, I/O, shims, algorithms, etc.)
 			}, tools = {
 				// simple requestAnimationFrame shim
 				reqAnimFrame: function(f){window.requestAnimationFrame(f);} ||
@@ -104,7 +110,7 @@ var ASCIIGame = {
 				direction: {
 					RIGHT: 1, LEFT: -1, UP: 2, DOWN: -2
 				},
-				// Bresenham's line algorithm
+				// Bresenham's line algorithm (okay, fine, I don't understand a single bit of this)
 				line: function(x1, y1, x2, y2) {
 					var dx = Math.abs(x2 - x1), dy = Math.abs(y2 - y1);
 					var sx = (x1 < x2) ? 1 : -1, sy = (y1 < y2) ? 1 : -1;
@@ -132,12 +138,13 @@ var ASCIIGame = {
 				tile: function(type) {
 					var o = ({
 						empty: {color: '#000', chr: '.'},
+                        block: {color: '#F00', chr: '#'},
+                        // this is where the one and only player is initialize from, so special player attributes go here
 						player: {color: '#00F', chr: '@', events: {
 							// foo bar
 						}, physics: {
 							gravity: 0.1
 						}},
-						block: {color: '#F00', chr: '#'},
 						goomba: {color: '#B73', chr: 'O', events: {
 							collision: function(self, other, direction) {
 								if (direction == tools.direction.UP) {
@@ -189,10 +196,11 @@ var ASCIIGame = {
 					data.set(x1, y1, data.tile('empty'));
 					data.set(x2, y2, old);
 				},
+                // uses tools#line to stop on collision
 				moveWithCollision: function(x1, y1, x2, y2) {
 					var line = tools.line(x1, y1, x2, y2);
 					var c = tools.unpack(line.shift()); // origin (x1, y1)
-					x2 = c[0]; y2 = c[1];
+					x2 = c[0]; y2 = c[1]; // will be changed to x1/y1 in loop below
 
 					while (line.length > 0) {
 						c = tools.unpack(line.shift());
@@ -203,7 +211,7 @@ var ASCIIGame = {
 						if (d2.id === 'empty') {
 							data.move(x1, y1, x2, y2);
 						} else {
-							console.log('ouch');
+                            // collision
 							var dx = x2 - x1, dy = y2 - y1,
 								dir = Math.abs(dy) >= Math.abs(dx) ?
 								(dy > 0 ? tools.direction.DOWN : tools.direction.UP) :
@@ -243,7 +251,9 @@ var ASCIIGame = {
 				// set up / initialize internal data and DOM
 				for (var y = 0; y < game.h; ++y) {
 					var row = [];
+
 					var elRow = [];
+
 					for (var x = 0; x < game.w; ++x) {
 						row.push(data.tile('empty'));
 
@@ -253,7 +263,9 @@ var ASCIIGame = {
 						elRow.push(node);
 						game.el.appendChild(node);
 					}
+
 					game.data.push(row);
+
 					game.elData.push(elRow);
 					game.el.appendChild(document.createTextNode('\n'));
 				}
@@ -265,7 +277,7 @@ var ASCIIGame = {
 				game.el.appendChild(game.info);
 
 				// set up event listeners
-				var _firsttime = true;
+				var _firsttime = true; // for finding charcodes quickly (should be removed later); exists due to laziness
 				window.onkeydown = function(e) { if (_firsttime) console.log(e.which, e.keyCode); _firsttime = false; tools.keysDown[e.which || e.keyCode] = true; };
 				window.onkeyup = function(e) { tools.keysDown[e.which || e.keyCode] = false; };
 
