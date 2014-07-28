@@ -24,31 +24,31 @@ var ASCIIGame = {
 						game.lastFrame = new Date();
 
 						if (tools.keysDown[65] && game.player.x > 0) { // A (go left)
-							if (data.get(game.player.x - 1)(game.player.y).id == 'empty') {
-								data.move(game.player.x)(game.player.y)(--game.player.x)(game.player.y);
+							if (data.get(game.player.x - 1, game.player.y).id == 'empty') {
+								data.move(game.player.x, game.player.y, --game.player.x, game.player.y);
 							}
 						}
 						if (tools.keysDown[68] && game.player.x < game.w - 1) { // D (go right)
-							if (data.get(game.player.x + 1)(game.player.y).id == 'empty') {
-								data.move(game.player.x)(game.player.y)(++game.player.x)(game.player.y);
+							if (data.get(game.player.x + 1, game.player.y).id == 'empty') {
+								data.move(game.player.x, game.player.y, ++game.player.x, game.player.y);
 							}
 						}
 						if (tools.keysDown[87]) { // W (jump)
-							if ((game.player.y == game.h - 1) || (data.get(game.player.x)(game.player.y + 1).id != 'empty')) {
+							if ((game.player.y == game.h - 1) || (data.get(game.player.x, game.player.y + 1).id != 'empty')) {
 								console.log(game.player.y);
 								game.player.jumpIndex = 0;
 							}
 						}
 						if (game.player.jumpIndex != -1) { // jumping
 							dy = game.player.jumpDeltas[game.player.jumpIndex++];
-							if (data.get(game.player.x)(game.player.y - dy).id == 'empty') {
-								data.move(game.player.x)(game.player.y)(game.player.x)(game.player.y -= dy);
+							if (data.get(game.player.x, game.player.y - dy).id == 'empty') {
+								data.move(game.player.x, game.player.y, game.player.x, game.player.y -= dy);
 							}
 							if (game.player.jumpIndex >= game.player.jumpDeltas.length) game.player.jumpIndex = -1;
 						}
 						if (game.player.y < game.h - 1) { // gravity
-							if (data.get(game.player.x)(game.player.y + 1).id == 'empty') {
-								data.move(game.player.x)(game.player.y)(game.player.x)(++game.player.y);
+							if (data.get(game.player.x, game.player.y + 1).id == 'empty') {
+								data.move(game.player.x, game.player.y, game.player.x, ++game.player.y);
 							}
 						}
 
@@ -69,35 +69,28 @@ var ASCIIGame = {
 				keysDown: {}
 			// data is a helper object to manipulate game.data and game.elData
 			}, data = {
-				// squares / tiles
-				s: {
-					EMPTY: {color: '#000', chr: '.', id: 'empty'},
-					PLAYER: {color: '#00F', chr: '@', id: 'player'},
-					BLOCK: {color: '#F00', chr: '#', id: 'block'}
+				// types of squares / tiles
+				tile: function(type) {
+					var o = ({
+						empty: {color: '#000', chr: '.'},
+						player: {color: '#00F', chr: '@'},
+						block: {color: '#F00', chr: '#'}
+					})[type];
+					if (!o) return {};
+					o.id = type;
+					return o;
 				},
-				get: function(x) {
-					return function(y) {
-						return game.data[y][x];
-					};
+				get: function(x, y) {
+					return game.data[y][x];
 				},
-				set: function(x) {
-					return function(y) {
-						return function(val) {
-							game.data[y][x] = val;
-							data.modified.push({x: x, y: y});
-						}
-					}
+				set: function(x, y, val) {
+					game.data[y][x] = val;
+					data.modified.push({x: x, y: y});
 				},
-				move: function(x1) {
-					return function(y1) {
-						return function(x2) {
-							return function(y2) {
-								var old = data.get(x1)(y1);
-								data.set(x1)(y1)(data.s.EMPTY);
-								data.set(x2)(y2)(old);
-							};
-						};
-					};
+				move: function(x1, y1, x2, y2) {
+					var old = data.get(x1, y1);
+					data.set(x1, y1, data.tile('empty'));
+					data.set(x2, y2, old);
 				},
 				// render and modified exist so that the whole DOM doesn't have to be updated each frame
 				render: function() {
@@ -122,11 +115,11 @@ var ASCIIGame = {
 					var row = [];
 					var elRow = [];
 					for (var x = 0; x < game.w; ++x) {
-						row.push(data.s.EMPTY);
+						row.push(data.tile('empty'));
 
 						var node = document.createElement('span');
-						node.style.color = data.s.EMPTY.color;
-						node.appendChild(document.createTextNode(data.s.EMPTY.chr));
+						node.style.color = data.tile('empty').color;
+						node.appendChild(document.createTextNode(data.tile('empty').chr));
 						elRow.push(node);
 						game.el.appendChild(node);
 					}
@@ -148,11 +141,11 @@ var ASCIIGame = {
 				// you!
 				game.player.x = 1;
 				game.player.y = game.h - 1;
-				data.set(game.player.x)(game.player.y)(data.s.PLAYER);
+				data.set(game.player.x, game.player.y, data.tile('player'));
 
 				// a random wall (for testing)
 				var wx = Math.random() * game.w | 0;
-				for (var i = 1; i < 6; ++i) data.set(wx)(game.h - i)(data.s.BLOCK);
+				for (var i = 1; i < 6; ++i) data.set(wx, game.h - i, data.tile('block'));
 
 				// start playing!
 				data.render();
