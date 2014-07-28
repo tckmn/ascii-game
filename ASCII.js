@@ -160,7 +160,8 @@ var ASCIIGame = {
 				game.el.appendChild(game.info);
 
 				// set up event listeners
-				window.onkeydown = function(e) { console.log(e.which, e.keyCode); tools.keysDown[e.which || e.keyCode] = true; };
+				var _firsttime = true;
+				window.onkeydown = function(e) { if (_firsttime) console.log(e.which, e.keyCode); _firsttime = false; tools.keysDown[e.which || e.keyCode] = true; };
 				window.onkeyup = function(e) { tools.keysDown[e.which || e.keyCode] = false; };
 
 				// you!
@@ -169,11 +170,11 @@ var ASCIIGame = {
 				data.set(game.player.x, game.player.y, data.tile('player'));
 
 				// a random wall (for testing)
-				var wx = Math.random() * game.w | 0;
+				var wx = (Math.random() * (game.w-3) | 0) + 3;
 				for (var i = 1; i < 6; ++i) data.set(wx, game.h - i, data.tile('block'));
 
 				// a random goomba (also for testing)
-				var gx = Math.random() * game.w | 0;
+				var gx = (Math.random() * (game.w-6) | 0) + 6;
 				if (wx === gx) gx += (gx > game.w/2 ? 1 : -1);
 				data.set(gx, game.h - 1, data.tile('goomba'));
 
