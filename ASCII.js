@@ -6,14 +6,18 @@
 
 /* TODO list
  * eliminate physics magic numbers (constants instead)
- * add delta times instead of fixed FPS
  * abstract into multiple files
  * scrolling!
  * a menu (low priority)
+ * dynamic jump height (holding down W makes you jump higher)
+ */
+
+/* BUGS list
+ * You can "step over" 1-tile high objects, which means you can squoosh goombas by walking towards them
  */
 
 /* List of events
- * frame(self): called every frame
+ * frame(self, deltaTime): called every frame
  * collision(self, other, direction): called when an object tries to move into another object
  */
 
@@ -38,49 +42,55 @@ var ASCIIGame = {
 				player: null,
 				lastFrame: 0,
 				mainLoop: function() {
-					// stuff that happens every frame
-					if (new Date() - game.lastFrame > 50/*ms*/) {
-						game.lastFrame = new Date();
+					var currentFrame = new Date();
+					var deltaTime = Math.min(currentFrame - game.lastFrame, 500);
+					game.lastFrame = currentFrame;
+					// old was fixed 50ms per frame
 
-						// handle player input
-						game.player.physics.velocityX *= 0.5;
-						if (tools.keysDown[65]) { // A (go left)
-							game.player.physics.velocityX = Math.max(game.player.physics.velocityX - 0.5, -1);
+					// handle player input
+					game.player.physics.velocityX *= deltaTime * 0.01;
+					if (tools.keysDown[65]) { // A (go left)
+						game.player.physics.velocityX = Math.max(game.player.physics.velocityX - (deltaTime * 0.001), -1);
+					}
+					if (tools.keysDown[68]) { // D (go right)
+						game.player.physics.velocityX = Math.min(game.player.physics.velocityX + (deltaTime * 0.001), 1);
+					}
+					if (tools.keysDown[87]) { // W (jump)
+						// can't jump in midair
+						if (data.get(game.player.x, game.player.y + 1).id !== 'empty') {
+							game.player.physics.velocityY = -0.02;
 						}
-						if (tools.keysDown[68]) { // D (go right)
-							game.player.physics.velocityX = Math.min(game.player.physics.velocityX + 0.5, 1);
-						}
-						if (tools.keysDown[87]) { // W (jump)
-                            // can't jump in midair
-							if (data.get(game.player.x, game.player.y + 1).id !== 'empty') {
-								game.player.physics.velocityY = -1;
+					}
+
+					// handle "each frame" events
+					for (var i = 0; i < game.eventData.frame.length; ++i) {
+						var c = tools.unpack(game.eventData.frame[i]), x = c[0], y = c[1];
+						data.get(x, y).events.frame(data.get(x, y), deltaTime);
+					}
+
+					// handle physics
+					for (var i = 0; i < game.physicsData.length; ++i) {
+						var c = tools.unpack(game.physicsData[i]), x = c[0], y = c[1], d = data.get(x, y);
+						d.physics.positionX += deltaTime * d.physics.velocityX;
+						d.physics.positionY += deltaTime * d.physics.velocityY;
+						if (d.physics.gravity) {
+							if (data.get(x, y + 1).id === 'empty') d.physics.velocityY += deltaTime * d.physics.gravity;
+							else {
+								d.physics.velocityY = Math.min(d.physics.velocityY, 0);
 							}
 						}
 
-						// handle "each frame" events
-						for (var i = 0; i < game.eventData.frame.length; ++i) {
-							var c = tools.unpack(game.eventData.frame[i]), x = c[0], y = c[1];
-							data.get(x, y).events.frame(data.get(x, y));
+						// update "real" coords if changed
+						var newX = Math.round(d.physics.positionX), newY = Math.round(d.physics.positionY);
+						if (x !== newX || y !== newY) {
+							if (data.moveWithCollision(x, y, newX, newY)) {
+								d.physics.positionX = d.x;
+								d.physics.positionY = d.y;
+							}
 						}
-
-						// handle physics
-						for (var i = 0; i < game.physicsData.length; ++i) {
-							var c = tools.unpack(game.physicsData[i]), x = c[0], y = c[1], d = data.get(x, y);
-							d.physics.positionX += d.physics.velocityX;
-							d.physics.positionY += d.physics.velocityY;
-							if (d.physics.gravity) {
-								if (data.get(x, y + 1).id === 'empty') d.physics.velocityY += d.physics.gravity;
-								else d.physics.velocityY = Math.min(d.physics.velocityY, 0);
-							}
-
-                            // update "real" coords if changed
-							var newX = Math.round(d.physics.positionX), newY = Math.round(d.physics.positionY);
-							if (x !== newX || y !== newY) {
-								if (data.moveWithCollision(x, y, newX, newY)) {
-									d.physics.positionX = d.x;
-									d.physics.positionY = d.y;
-								}
-							}
+						// this is *really* hacky
+						if (d.physics.gravity && data.get(d.x, d.y + 1) !== 'empty') {
+							data.moveWithCollision(d.x, d.y, d.x, d.y + 1); // force of gravity when standing on the ground
 						}
 
 						data.render();
@@ -138,12 +148,12 @@ var ASCIIGame = {
 				tile: function(type) {
 					var o = ({
 						empty: {color: '#000', chr: '.'},
-                        block: {color: '#F00', chr: '#'},
-                        // this is where the one and only player is initialize from, so special player attributes go here
+						block: {color: '#F00', chr: '#'},
+						// this is where the one and only player is initialize from, so special player attributes go here
 						player: {color: '#00F', chr: '@', events: {
 							// foo bar
 						}, physics: {
-							gravity: 0.1
+							gravity: 0.00002
 						}},
 						goomba: {color: '#B73', chr: 'O', events: {
 							collision: function(self, other, direction) {
@@ -152,8 +162,8 @@ var ASCIIGame = {
 								}
 							}
 						}, physics: {
-							velocityX: -0.2,
-							gravity: 0.1
+							velocityX: -0.001,
+							gravity: 0.00002
 						}, counter: 0}
 					})[type] || {};
 					o.id = type;
@@ -196,7 +206,7 @@ var ASCIIGame = {
 					data.set(x1, y1, data.tile('empty'));
 					data.set(x2, y2, old);
 				},
-                // uses tools#line to stop on collision
+				// uses tools#line to stop on collision
 				moveWithCollision: function(x1, y1, x2, y2) {
 					var line = tools.line(x1, y1, x2, y2);
 					var c = tools.unpack(line.shift()); // origin (x1, y1)
@@ -211,7 +221,7 @@ var ASCIIGame = {
 						if (d2.id === 'empty') {
 							data.move(x1, y1, x2, y2);
 						} else {
-                            // collision
+							// collision
 							var dx = x2 - x1, dy = y2 - y1,
 								dir = Math.abs(dy) >= Math.abs(dx) ?
 								(dy > 0 ? tools.direction.DOWN : tools.direction.UP) :
