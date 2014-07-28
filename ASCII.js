@@ -24,30 +24,30 @@ var ASCIIGame = {
 						game.lastFrame = new Date();
 
 						if (tools.keysDown[65] && game.player.x > 0) { // A (go left)
-							if (data.get(game.player.x - 1, game.player.y).id == 'empty') {
+							if (data.get(game.player.x - 1, game.player.y).id === 'empty') {
 								data.move(game.player.x, game.player.y, --game.player.x, game.player.y);
 							}
 						}
 						if (tools.keysDown[68] && game.player.x < game.w - 1) { // D (go right)
-							if (data.get(game.player.x + 1, game.player.y).id == 'empty') {
+							if (data.get(game.player.x + 1, game.player.y).id === 'empty') {
 								data.move(game.player.x, game.player.y, ++game.player.x, game.player.y);
 							}
 						}
 						if (tools.keysDown[87]) { // W (jump)
-							if ((game.player.y == game.h - 1) || (data.get(game.player.x, game.player.y + 1).id != 'empty')) {
+							if ((game.player.y === game.h - 1) || (data.get(game.player.x, game.player.y + 1).id !== 'empty')) {
 								console.log(game.player.y);
 								game.player.jumpIndex = 0;
 							}
 						}
-						if (game.player.jumpIndex != -1) { // jumping
-							dy = game.player.jumpDeltas[game.player.jumpIndex++];
-							if (data.get(game.player.x, game.player.y - dy).id == 'empty') {
+						if (game.player.jumpIndex !== -1) { // jumping
+							var dy = game.player.jumpDeltas[game.player.jumpIndex++];
+							if (data.get(game.player.x, game.player.y - dy).id === 'empty') {
 								data.move(game.player.x, game.player.y, game.player.x, game.player.y -= dy);
 							}
 							if (game.player.jumpIndex >= game.player.jumpDeltas.length) game.player.jumpIndex = -1;
 						}
 						if (game.player.y < game.h - 1) { // gravity
-							if (data.get(game.player.x, game.player.y + 1).id == 'empty') {
+							if (data.get(game.player.x, game.player.y + 1).id === 'empty') {
 								data.move(game.player.x, game.player.y, game.player.x, ++game.player.y);
 							}
 						}
@@ -159,7 +159,7 @@ var ASCIIGame = {
 
 				// a random goomba (also for testing)
 				var gx = Math.random() * game.w | 0;
-				if (wx == gx) gx += (gx > game.w/2 ? 1 : -1);
+				if (wx === gx) gx += (gx > game.w/2 ? 1 : -1);
 				data.set(gx, game.h - 1, data.tile('goomba'));
 
 				console.log(game.dynamicData);
@@ -171,9 +171,9 @@ var ASCIIGame = {
 		};
 		return asciiGame;
 	}
-}
+};
 
 window.onload = function() {
 	var asciiGame = ASCIIGame.init(document.getElementById('ascii'));
 	asciiGame.play();
-}
+};
