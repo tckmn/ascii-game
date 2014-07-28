@@ -4,6 +4,22 @@
  * @license MIT
  */
 
+/* TODO list
+ * eliminate physics magic numbers (constants instead)
+ * add delta times instead of fixed FPS
+ */
+
+/* List of events
+ * frame(self): called every frame
+ * collision(self, other, direction): called when an object tries to move into another object
+ */
+
+/* Physics properties
+ * positionX, positionY
+ * velocityX, velocityY
+ * gravity
+ */
+
 var ASCIIGame = {
 	init: function(el, options) {
 		if (!options) options = {};
@@ -13,7 +29,7 @@ var ASCIIGame = {
 				// DOM
 				el: el, elData: [], info: null,
 				// internals
-				data: [], eventData: {frame: []},
+				data: [], eventData: {frame: []}, physicsData: [],
 				w: options.w || options.width || 80,
 				h: options.h || options.height || 24,
 				player: null,
@@ -24,32 +40,41 @@ var ASCIIGame = {
 						game.lastFrame = new Date();
 
 						// handle player input
+						game.player.physics.velocityX *= 0.5;
 						if (tools.keysDown[65]) { // A (go left)
-							data.moveWithCollision(game.player.x, game.player.y, game.player.x - 1, game.player.y);
+							game.player.physics.velocityX = Math.max(game.player.physics.velocityX - 0.5, -1);
 						}
 						if (tools.keysDown[68]) { // D (go right)
-							data.moveWithCollision(game.player.x, game.player.y, game.player.x + 1, game.player.y);
+							game.player.physics.velocityX = Math.min(game.player.physics.velocityX + 0.5, 1);
 						}
 						if (tools.keysDown[87]) { // W (jump)
 							if (data.get(game.player.x, game.player.y + 1).id !== 'empty') {
-								game.player.jumpIndex = 0;
+								game.player.physics.velocityY = -1;
 							}
-						}
-						if (game.player.jumpIndex !== -1) { // jumping
-							var dy = game.player.jumpDeltas[game.player.jumpIndex++];
-							if (data.get(game.player.x, game.player.y - dy).id === 'empty') {
-								data.move(game.player.x, game.player.y, game.player.x, game.player.y - dy);
-							}
-							if (game.player.jumpIndex >= game.player.jumpDeltas.length) game.player.jumpIndex = -1;
-						}
-						if (game.player.y < game.h - 1) { // gravity
-							data.moveWithCollision(game.player.x, game.player.y, game.player.x, game.player.y + 1);
 						}
 
 						// handle "each frame" events
 						for (var i = 0; i < game.eventData.frame.length; ++i) {
 							var c = tools.unpack(game.eventData.frame[i]), x = c[0], y = c[1];
 							data.get(x, y).events.frame(data.get(x, y));
+						}
+
+						// handle physics
+						for (var i = 0; i < game.physicsData.length; ++i) {
+							var c = tools.unpack(game.physicsData[i]), x = c[0], y = c[1], d = data.get(x, y);
+							d.physics.positionX += d.physics.velocityX;
+							d.physics.positionY += d.physics.velocityY;
+							if (d.physics.gravity) {
+								if (data.get(x, y + 1).id === 'empty') d.physics.velocityY += d.physics.gravity;
+								else d.physics.velocityY = Math.min(d.physics.velocityY, 0);
+							}
+							var newX = Math.round(d.physics.positionX), newY = Math.round(d.physics.positionY);
+							if (x !== newX || y !== newY) {
+								if (data.moveWithCollision(x, y, newX, newY)) {
+									d.physics.positionX = d.x;
+									d.physics.positionY = d.y;
+								}
+							}
 						}
 
 						data.render();
@@ -78,6 +103,28 @@ var ASCIIGame = {
 				// helper constants
 				direction: {
 					RIGHT: 1, LEFT: -1, UP: 2, DOWN: -2
+				},
+				// Bresenham's line algorithm
+				line: function(x1, y1, x2, y2) {
+					var dx = Math.abs(x2 - x1), dy = Math.abs(y2 - y1);
+					var sx = (x1 < x2) ? 1 : -1, sy = (y1 < y2) ? 1 : -1;
+					var err = dx - dy;
+					var points = [tools.pack(x1, y1)];
+
+					while (x1 != x2 || y1 != y2) {
+						var e2 = err * 2;
+						if (e2 > -dy) {
+							err -= dy;
+							x1 += sx;
+						}
+						if (e2 < dx) {
+							err += dx;
+							y1 += sy;
+						}
+						points.push(tools.pack(x1, y1));
+					}
+
+					return points;
 				}
 			// data is a helper object to manipulate game.data and game.elData
 			}, data = {
@@ -87,21 +134,19 @@ var ASCIIGame = {
 						empty: {color: '#000', chr: '.'},
 						player: {color: '#00F', chr: '@', events: {
 							// foo bar
-						}, jumpDeltas: [2, 2, 2, 1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0], jumpIndex: -1},
+						}, physics: {
+							gravity: 0.1
+						}},
 						block: {color: '#F00', chr: '#'},
 						goomba: {color: '#B73', chr: 'O', events: {
-							frame: function(self) {
-								if (++self.counter !== 4) return;
-								self.counter = 0;
-								if (data.get(self.x - 1, self.y).id === 'empty') {
-									data.move(self.x, self.y, self.x - 1, self.y);
-								}
-							},
 							collision: function(self, other, direction) {
 								if (direction == tools.direction.UP) {
 									data.set(self.x, self.y, data.tile('empty'));
 								}
 							}
+						}, physics: {
+							velocityX: -0.2,
+							gravity: 0.1
 						}, counter: 0}
 					})[type] || {};
 					o.id = type;
@@ -110,7 +155,7 @@ var ASCIIGame = {
 				},
 				get: function(x, y) {
 					if (x < 0 || y < 0 || x >= game.data[0].length || y >= game.data.length) {
-						return {id: 'outofbounds'};
+						return {id: 'outofbounds', events: {}};
 					}
 					return game.data[y][x];
 				},
@@ -119,10 +164,21 @@ var ASCIIGame = {
 					val.y = y;
 					for (evtType in game.eventData) {
 						if (game.data[y][x].events[evtType]) {
-							game.eventData[evtType].splice(game.eventData[evtType].indexOf(tools.pack(x, y)));
+							game.eventData[evtType].splice(game.eventData[evtType].indexOf(tools.pack(x, y)), 1);
 						}
 						if (val.events[evtType]) {
 							game.eventData[evtType].push(tools.pack(x, y));
+						}
+
+						if (game.data[y][x].physics) {
+							game.physicsData.splice(game.physicsData.indexOf(tools.pack(x, y)), 1);
+						}
+						if (val.physics) {
+							if (!val.physics.positionX) val.physics.positionX = x;
+							if (!val.physics.positionY) val.physics.positionY = y;
+							if (!val.physics.velocityX) val.physics.velocityX = 0;
+							if (!val.physics.velocityY) val.physics.velocityY = 0;
+							game.physicsData.push(tools.pack(x, y));
 						}
 					}
 					game.data[y][x] = val;
@@ -134,19 +190,37 @@ var ASCIIGame = {
 					data.set(x2, y2, old);
 				},
 				moveWithCollision: function(x1, y1, x2, y2) {
-					var d1 = data.get(x1, y1), d2 = data.get(x2, y2);
-					if (d2.id === 'empty') {
-						data.move(x1, y1, x2, y2);
-					} else {
-						// this line of code is terrifying
-						var dir = x1 < x2 ? tools.direction.RIGHT : (x1 > x2 ? tools.direction.LEFT : (y1 < y2 ? tools.direction.DOWN : tools.direction.UP));
-						if (d1.events.collision) {
-							d1.events.collision(d1, d2, dir);
-						}
-						if (d2.events.collision) {
-							d2.events.collision(d2, d1, -dir);
+					var line = tools.line(x1, y1, x2, y2);
+					var c = tools.unpack(line.shift()); // origin (x1, y1)
+					x2 = c[0]; y2 = c[1];
+
+					while (line.length > 0) {
+						c = tools.unpack(line.shift());
+						x1 = x2; y1 = y2;
+						x2 = c[0]; y2 = c[1];
+
+						var d1 = data.get(x1, y1), d2 = data.get(x2, y2);
+						if (d2.id === 'empty') {
+							data.move(x1, y1, x2, y2);
+						} else {
+							console.log('ouch');
+							var dx = x2 - x1, dy = y2 - y1,
+								dir = Math.abs(dy) >= Math.abs(dx) ?
+								(dy > 0 ? tools.direction.DOWN : tools.direction.UP) :
+								(dx > 0 ? tools.direction.RIGHT : tools.direction.LEFT);
+
+							if (d1.events.collision) {
+								d1.events.collision(d1, d2, dir);
+							}
+							if (d2.events.collision) {
+								d2.events.collision(d2, d1, -dir);
+							}
+
+							return true; // collided
 						}
 					}
+
+					return false; // did not collide
 				},
 				// render and modified exist so that the whole DOM doesn't have to be updated each frame
 				render: function() {
@@ -204,9 +278,9 @@ var ASCIIGame = {
 				for (var i = 1; i < 6; ++i) data.set(wx, game.h - i, data.tile('block'));
 
 				// a random goomba (also for testing)
-				var gx = (Math.random() * (game.w-6) | 0) + 6;
+				var gx = (Math.random() * (game.w-9) | 0) + 9;
 				if (wx === gx) gx += (gx > game.w/2 ? 1 : -1);
-				data.set(gx, game.h - 1, data.tile('goomba'));
+				data.set(gx, game.h - 4, data.tile('goomba'));
 
 				// start playing!
 				data.render();
