@@ -16,7 +16,7 @@ var ASCIIGame = {
 				data: [], eventData: {frame: []},
 				w: options.w || options.width || 80,
 				h: options.h || options.height || 24,
-				player: {jumpDeltas: [2, 2, 2, 1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0], jumpIndex: -1},
+				player: null,
 				lastFrame: 0,
 				mainLoop: function() {
 					// stuff that happens every frame
@@ -26,12 +26,12 @@ var ASCIIGame = {
 						// handle player input
 						if (tools.keysDown[65]) { // A (go left)
 							if (data.get(game.player.x - 1, game.player.y).id === 'empty') {
-								data.move(game.player.x, game.player.y, --game.player.x, game.player.y);
+								data.move(game.player.x, game.player.y, game.player.x - 1, game.player.y);
 							}
 						}
 						if (tools.keysDown[68]) { // D (go right)
 							if (data.get(game.player.x + 1, game.player.y).id === 'empty') {
-								data.move(game.player.x, game.player.y, ++game.player.x, game.player.y);
+								data.move(game.player.x, game.player.y, game.player.x + 1, game.player.y);
 							}
 						}
 						if (tools.keysDown[87]) { // W (jump)
@@ -42,13 +42,13 @@ var ASCIIGame = {
 						if (game.player.jumpIndex !== -1) { // jumping
 							var dy = game.player.jumpDeltas[game.player.jumpIndex++];
 							if (data.get(game.player.x, game.player.y - dy).id === 'empty') {
-								data.move(game.player.x, game.player.y, game.player.x, game.player.y -= dy);
+								data.move(game.player.x, game.player.y, game.player.x, game.player.y - dy);
 							}
 							if (game.player.jumpIndex >= game.player.jumpDeltas.length) game.player.jumpIndex = -1;
 						}
 						if (game.player.y < game.h - 1) { // gravity
 							if (data.get(game.player.x, game.player.y + 1).id === 'empty') {
-								data.move(game.player.x, game.player.y, game.player.x, ++game.player.y);
+								data.move(game.player.x, game.player.y, game.player.x, game.player.y + 1);
 							}
 						}
 
@@ -91,7 +91,9 @@ var ASCIIGame = {
 				tile: function(type) {
 					var o = ({
 						empty: {color: '#000', chr: '.'},
-						player: {color: '#00F', chr: '@'},
+						player: {color: '#00F', chr: '@', events: {
+							// foo bar
+						}, jumpDeltas: [2, 2, 2, 1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0], jumpIndex: -1},
 						block: {color: '#F00', chr: '#'},
 						goomba: {color: '#B73', chr: 'O', events: {
 							frame: function(self) {
@@ -200,9 +202,8 @@ var ASCIIGame = {
 				window.onkeyup = function(e) { tools.keysDown[e.which || e.keyCode] = false; };
 
 				// you!
-				game.player.x = 1;
-				game.player.y = game.h - 1;
-				data.set(game.player.x, game.player.y, data.tile('player'));
+				game.player = data.tile('player');
+				data.set(1, game.h - 1, game.player);
 
 				// a random wall (for testing)
 				var wx = (Math.random() * (game.w-3) | 0) + 3;
