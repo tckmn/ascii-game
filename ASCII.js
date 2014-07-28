@@ -33,6 +33,9 @@ var ASCIIGame = {
 				el: el, elData: [], info: null,
 				// internals
 				data: [], eventData: {frame: []}, physicsData: [],
+				el: el,
+				data: [],
+				elData: [],
 				w: options.w || options.width || 80,
 				h: options.h || options.height || 24,
 				player: null,
@@ -246,9 +249,10 @@ var ASCIIGame = {
 		// this is the only object from init that will be exposed to outsiders
 		var asciiGame = {
 			play: function() {
-				// remove name choosing span
-				document.body.removeChild(document.getElementsByTagName('span')[0]);
 				
+				// remove nameDisp
+				document.body.removeChild(document.getElementById('nameDisp'));
+                  
 				// clear loading message, etc.
 				while (game.el.firstChild) game.el.removeChild(game.el.firstChild);
 
