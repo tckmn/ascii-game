@@ -7,7 +7,7 @@ var ASCIIGame = {
 				el: el,
 				data: [],
 				elData: [],
-                  playerName:document.getElementsByTagName('span')[0].innerHTML.replace('Enter your name and press Enter: ', ''),
+                		playerName:document.getElementsByTagName('span')[0].innerHTML.replace('Enter your name and press Enter: ', ''),
 				w: options.w || options.width || 80,
 				h: options.h || options.height || 24,
 				player: {jumpDeltas: [2, 2, 1, 2, 1, 1, 2, 1, 1, 0, 1, 1, 0, 1, 0, 0], jumpIndex: -1},
@@ -99,8 +99,8 @@ var ASCIIGame = {
 		// this is the only object from init that will be exposed to outsiders
 		var asciiGame = {
 			play: function() {
-                  // remove name choosing span
-                  document.body.removeChild(document.getElementsByTagName('span')[0]);
+                  		// remove name choosing span
+                  		document.body.removeChild(document.getElementsByTagName('span')[0]);
                   
 				// clear loading message, etc.
 				while (game.el.firstChild) game.el.removeChild(game.el.firstChild);
@@ -141,7 +141,7 @@ var ASCIIGame = {
 }
 
 window.onload = function() {
-    //Create span that everything appears on
+    // create span that everything appears on
     
     document.getElementById('ascii').innerHTML='';
     
@@ -153,19 +153,19 @@ window.onload = function() {
     window.addEventListener('keypress', nameHandler, false);
 }
 
-function nameHandler(e)
-{
-    switch(e.keyCode)
-    {
-        case 13:
-        var asciiGame = ASCIIGame.init(document.getElementById('ascii'));
-        asciiGame.play();
+function nameHandler(e) {
+	// check which key was pressed
+    	switch(e.keyCode)
+    	{
+		case 13:
+		var asciiGame = ASCIIGame.init(document.getElementById('ascii'));
+		asciiGame.play();
+	   	
+		window.removeEventListener('keypress', nameHandler, false);
+		break;
         
-        window.removeEventListener('keypress', nameHandler, false);
-        break;
-        
-        default:
-        var node = document.getElementsByTagName('span')[0];
-        node.appendChild(document.createTextNode(String.fromCharCode(e.keyCode)));
-    }
+        	default:
+        	var node = document.getElementsByTagName('span')[0];
+        	node.appendChild(document.createTextNode(String.fromCharCode(e.keyCode)));
+    	}
 }
