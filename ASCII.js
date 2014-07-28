@@ -55,7 +55,7 @@ var ASCIIGame = {
 						// handle dynamic tiles
 						for (var i = 0; i < game.dynamicData.length; ++i) {
 							var c = tools.unpack(game.dynamicData[i]), x = c[0], y = c[1];
-							data.get(x, y).eachFrame(x, y);
+							data.get(x, y).eachFrame(data.get(x, y), x, y);
 						}
 
 						data.render();
@@ -89,11 +89,13 @@ var ASCIIGame = {
 						empty: {color: '#000', chr: '.'},
 						player: {color: '#00F', chr: '@'},
 						block: {color: '#F00', chr: '#'},
-						goomba: {color: '#B73', chr: 'O', dynamic: true, eachFrame: function(x, y) {
-							if (data.get(x - 1, y).id == 'empty') {
+						goomba: {color: '#B73', chr: 'O', dynamic: true, eachFrame: function(self, x, y) {
+							if (++self.counter !== 3) return;
+							self.counter = 0;
+							if (data.get(x - 1, y).id === 'empty') {
 								data.move(x, y, x - 1, y);
 							}
-						}}
+						}, counter: 0}
 					})[type] || {};
 					o.id = type;
 					return o;
