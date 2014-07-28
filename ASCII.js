@@ -75,8 +75,7 @@ var ASCIIGame = {
 						empty: {color: '#000', chr: '.'},
 						player: {color: '#00F', chr: '@'},
 						block: {color: '#F00', chr: '#'}
-					})[type];
-					if (!o) return {};
+					})[type] || {};
 					o.id = type;
 					return o;
 				},
