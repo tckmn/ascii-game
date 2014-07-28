@@ -25,14 +25,10 @@ var ASCIIGame = {
 
 						// handle player input
 						if (tools.keysDown[65]) { // A (go left)
-							if (data.get(game.player.x - 1, game.player.y).id === 'empty') {
-								data.move(game.player.x, game.player.y, game.player.x - 1, game.player.y);
-							}
+							data.moveWithCollision(game.player.x, game.player.y, game.player.x - 1, game.player.y);
 						}
 						if (tools.keysDown[68]) { // D (go right)
-							if (data.get(game.player.x + 1, game.player.y).id === 'empty') {
-								data.move(game.player.x, game.player.y, game.player.x + 1, game.player.y);
-							}
+							data.moveWithCollision(game.player.x, game.player.y, game.player.x + 1, game.player.y);
 						}
 						if (tools.keysDown[87]) { // W (jump)
 							if (data.get(game.player.x, game.player.y + 1).id !== 'empty') {
@@ -47,9 +43,7 @@ var ASCIIGame = {
 							if (game.player.jumpIndex >= game.player.jumpDeltas.length) game.player.jumpIndex = -1;
 						}
 						if (game.player.y < game.h - 1) { // gravity
-							if (data.get(game.player.x, game.player.y + 1).id === 'empty') {
-								data.move(game.player.x, game.player.y, game.player.x, game.player.y + 1);
-							}
+							data.moveWithCollision(game.player.x, game.player.y, game.player.x, game.player.y + 1);
 						}
 
 						// handle "each frame" events
