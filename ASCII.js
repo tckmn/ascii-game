@@ -9,7 +9,6 @@
  * abstract into multiple files
  * scrolling!
  * a menu (low priority)
- * dynamic jump height (holding down W makes you jump higher)
  */
 
 /* BUGS list
@@ -59,7 +58,11 @@ var ASCIIGame = {
 						// can't jump in midair
 						if (data.get(game.player.x, game.player.y + 1).id !== 'empty') {
 							game.player.physics.velocityY = -0.02;
+							game.player.holdingJump = true;
 						}
+					} else if (game.player.holdingJump) {
+						game.player.holdingJump = false;
+						game.player.physics.velocityY = Math.max(game.player.physics.velocityY, -0.005);
 					}
 
 					// handle "each frame" events
